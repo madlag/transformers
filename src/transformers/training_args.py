@@ -298,6 +298,9 @@ class TrainingArguments:
             "help": "Number of subprocesses to use for data loading (PyTorch only). 0 means that the data will be loaded in the main process."
         },
     )
+    dataset_is_data_loader: bool = field(
+        default=False, metadata={"help": "The dataset is already a torch.utils.data.DataLoader"}
+    )
 
     past_index: int = field(
         default=-1,

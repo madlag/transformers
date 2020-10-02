@@ -398,14 +398,17 @@ class Trainer:
             raise ValueError("Trainer: training requires a train_dataset.")
         train_sampler = self._get_train_sampler()
 
-        return DataLoader(
-            self.train_dataset,
-            batch_size=self.args.train_batch_size,
-            sampler=train_sampler,
-            collate_fn=self.data_collator,
-            drop_last=self.args.dataloader_drop_last,
-            num_workers=self.args.dataloader_num_workers,
-        )
+        if not self.args.dataset_is_data_loader:
+            return DataLoader(
+                self.train_dataset,
+                batch_size=self.args.train_batch_size,
+                sampler=train_sampler,
+                collate_fn=self.data_collator,
+                drop_last=self.args.dataloader_drop_last,
+                num_workers=self.args.dataloader_num_workers,
+            )
+        else:
+            return self.train_dataset
 
     def _get_eval_sampler(self, eval_dataset: Dataset) -> Optional[torch.utils.data.sampler.Sampler]:
         if is_torch_tpu_available():
@@ -506,7 +509,10 @@ class Trainer:
 
         Will raise an exception if the underlying dataset dese not implement method :obj:`__len__`
         """
-        return len(dataloader.dataset)
+        if not self.args.dataset_is_data_loader:
+            return len(dataloader.dataset)
+        else:
+            return len(dataloader)
 
     def _hp_search_setup(self, trial: Union["optuna.Trial", Dict[str, Any]]):
         """ HP search setup code """
