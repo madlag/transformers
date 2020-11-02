@@ -109,6 +109,9 @@ class TrialShortNamer:
                 missing_defaults[k] = v
 
         if len(missing_defaults) != 0:
+            keys = list(missing_defaults.keys())
+            keys.sort()
+            missing_defaults = {k: missing_defaults[k] for k in keys}
             message = "dict(" + "".join(f"{k}={repr(v)},\n" for k, v in missing_defaults.items()) + ")"
             raise Exception(
                 f"You should provide a additional default values in your TrialShortNamer subclass.\n Suggested default dictionary:\n{message}\n"
