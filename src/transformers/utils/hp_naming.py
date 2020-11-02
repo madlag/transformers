@@ -4,7 +4,7 @@ import re
 
 class TrialShortNamer:
     PREFIX = "hp"
-    DEFAULTS = {}
+    DEFAULTS = dict()
     NAMING_INFO = None
 
     @classmethod
@@ -18,8 +18,7 @@ class TrialShortNamer:
         if len(word) == 0:
             return ""
         short_word = None
-        if any(char.isdigit() for char in word):
-            raise Exception(f"Parameters should not contain numbers: '{word}' contains a number")
+
         if word in info["short_word"]:
             return info["short_word"][word]
         for prefix_len in range(1, len(word) + 1):
@@ -50,6 +49,7 @@ class TrialShortNamer:
 
         info["short_word"][word] = short_word
         info["reverse_short_word"][short_word] = word
+
         return short_word
 
     @staticmethod
@@ -60,7 +60,8 @@ class TrialShortNamer:
 
         # We try to create a separatorless short name, but if there is a collision we have to fallback
         # to a separated short name
-        separators = ["", "_"]
+
+        separators = ("", "_")
 
         for separator in separators:
             shortname = separator.join(shortname_parts)
@@ -102,9 +103,18 @@ class TrialShortNamer:
         assert cls.PREFIX is not None
         name = [copy.copy(cls.PREFIX)]
 
+        missing_defaults = dict()
         for k, v in params.items():
             if k not in cls.DEFAULTS:
-                raise Exception(f"You should provide a default value for the param name {k} with value {v}")
+                missing_defaults[k] = v
+
+        if len(missing_defaults) != 0:
+            message = "dict(" + "".join(f"{k}={repr(v)},\n" for k, v in missing_defaults.items()) + ")"
+            raise Exception(
+                f"You should provide a additional default values in your TrialShortNamer subclass.\n Suggested default dictionary:\n{message}\n"
+            )
+
+        for k, v in params.items():
             if v == cls.DEFAULTS[k]:
                 # The default value is not added to the name
                 continue
@@ -114,7 +124,10 @@ class TrialShortNamer:
             if isinstance(v, bool):
                 v = 1 if v else 0
 
-            sep = "" if isinstance(v, (int, float)) else "-"
+            if any(char.isdigit() for char in k):
+                sep = "-"
+            else:
+                sep = "" if isinstance(v, (int, float)) else "-"
             e = f"{key}{sep}{v}"
             name.append(e)
 
@@ -122,6 +135,8 @@ class TrialShortNamer:
 
     @classmethod
     def parse_repr(cls, repr):
+        # This code should have some tests before usage
+        assert False
         repr = repr[len(cls.PREFIX) + 1 :]
         if repr == "":
             values = []
@@ -132,7 +147,14 @@ class TrialShortNamer:
 
         for value in values:
             if "-" in value:
-                p_k, p_v = value.split("-")
+                parts = value.split("-")
+                last_part = parts[-1]
+                try:
+                    p_v = -float(last_part)
+                except ValueError:
+                    p_v = last_part
+
+                p_k = "-".join(parts[:-1])
             else:
                 p_k = re.sub("[0-9.]", "", value)
                 p_v = float(re.sub("[^0-9.]", "", value))

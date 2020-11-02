@@ -639,7 +639,7 @@ class TrainerHyperParameterIntegrationTest(unittest.TestCase):
 
     def test_hyperparameter_search(self):
         class MyTrialShortNamer(TrialShortNamer):
-            DEFAULTS = {"a": 0, "b": 0}
+            DEFAULTS = dict(a=0, b=0)
 
         def hp_space(trial):
             return {}
