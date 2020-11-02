@@ -22,6 +22,7 @@ import logging
 import os
 import random
 import timeit
+import shutil
 
 import numpy as np
 import torch
@@ -611,7 +612,7 @@ def load_and_cache_examples(args, tokenizer, evaluate=False, output_examples=Fal
         ),
     )
     if args.truncate_train_examples != -1:
-        cached_features_file = cached_features_file[:-len(".json")] + f"_truncate_{args.truncate_train_examples}.json"
+        cached_features_file = cached_features_file[: -len(".json")] + f"_truncate_{args.truncate_train_examples}.json"
 
     # Init features and dataset from cache if it exists
     if os.path.exists(cached_features_file) and not args.overwrite_cache:
@@ -644,7 +645,7 @@ def load_and_cache_examples(args, tokenizer, evaluate=False, output_examples=Fal
                 examples = processor.get_train_examples(args.data_dir, filename=args.train_file)
 
         if args.truncate_train_examples != -1:
-            examples = examples[:args.truncate_train_examples]
+            examples = examples[: args.truncate_train_examples]
 
         features, dataset = squad_convert_examples_to_features(
             examples=examples,
@@ -825,11 +826,17 @@ def create_parser():
         "--mask_scale", default=0.0, type=float, help="Initialization parameter for the chosen initialization method."
     )
     parser.add_argument(
-        "--mask_block_rows", default=1, type=int, help="Block row size for masks. Default is 1 -> general sparsity, not block sparsity."
+        "--mask_block_rows",
+        default=1,
+        type=int,
+        help="Block row size for masks. Default is 1 -> general sparsity, not block sparsity.",
     )
 
     parser.add_argument(
-        "--mask_block_cols", default=1, type=int, help="Block row size for masks. Default is 1 -> general sparsity, not block sparsity."
+        "--mask_block_cols",
+        default=1,
+        type=int,
+        help="Block row size for masks. Default is 1 -> general sparsity, not block sparsity.",
     )
 
     parser.add_argument("--regularization", default=None, help="Add L0 or L1 regularization to the mask scores.")
@@ -953,96 +960,89 @@ def create_parser():
 
     parser.add_argument("--threads", type=int, default=1, help="multiple threads for converting example to features")
 
-    parser.add_argument("--truncate_train_examples", type=int, default=-1, help="Only keep first train examples, for development purpose for example.")
+    parser.add_argument(
+        "--truncate_train_examples",
+        type=int,
+        default=-1,
+        help="Only keep first train examples, for development purpose for example.",
+    )
 
     return parser
 
-class ShortNamer(TrialShortNamer):
-    DEFAULTS = dict(adam_epsilon=1e-08,
-                        alpha_ce=0.5,
-                        alpha_distil=0.5,
-                        cache_dir='',
-                        config_name='',
-                        data_dir='squad_data',
-                        do_eval=True,
-                        do_lower_case=True,
-                        do_train=True,
-                        doc_stride=128,
-                        eval_all_checkpoints=False,
-                        evaluate_during_training=False,
-                        final_lambda=0.0,
-                        final_threshold=0.15,
-                        final_warmup=2,
-                        fp16=False,
-                        fp16_opt_level='O1',
-                        global_topk=False,
-                        global_topk_frequency_compute=25,
-                        gradient_accumulation_steps=16,
-                        initial_threshold=1.0,
-                        initial_warmup=1,
-                        lang_id=0,
-                        learning_rate=3e-05,
-                        local_rank=-1,
-                        logging_steps=10,
-                        mask_init='constant',
-                        mask_scale=0.0,
-                        mask_scores_learning_rate=0.01,
-                        mask_block_rows=1,
-                        mask_block_cols=1,
-                        max_answer_length=30,
-                        max_grad_norm=1.0,
-                        max_query_length=64,
-                        max_seq_length=384,
-                        max_steps=-1,
-                        model_name_or_path='bert-base-uncased',
-                        model_type='masked_bert',
-                        n_best_size=20,
-                        no_cuda=False,
-                        null_score_diff_threshold=0.0,
-                        num_train_epochs=10.0,
-                        output_dir='block_movement_pruning/output',
-                        overwrite_cache=False,
-                        overwrite_output_dir=True,
-                        per_gpu_eval_batch_size=8,
-                        per_gpu_train_batch_size=1,
-                        predict_file='dev-v1.1.json',
-                        pruning_method='topK',
-                        regularization=None,
-                        save_steps=500,
-                        seed=42,
-                        server_ip='',
-                        server_port='',
-                        teacher_name_or_path=None,
-                        teacher_type=None,
-                        temperature=2.0,
-                        threads=8,
-                        tokenizer_name='',
-                        train_file='train-v1.1.json',
-                        truncate_train_examples=100,
-                        verbose_logging=False,
-                        version_2_with_negative=False,
-                        warmup_steps=5400,
-                        weight_decay=0.0,
-                        )
 
+class ShortNamer(TrialShortNamer):
+    DEFAULTS = dict(
+        adam_epsilon=1e-08,
+        alpha_ce=0.5,
+        alpha_distil=0.5,
+        cache_dir="",
+        config_name="",
+        data_dir="squad_data",
+        do_eval=True,
+        do_lower_case=True,
+        do_train=True,
+        doc_stride=128,
+        eval_all_checkpoints=False,
+        evaluate_during_training=True,
+        final_lambda=0.0,
+        final_threshold=0.15,
+        final_warmup=2,
+        fp16=False,
+        fp16_opt_level="O1",
+        global_topk=False,
+        global_topk_frequency_compute=25,
+        gradient_accumulation_steps=1,
+        initial_threshold=1.0,
+        initial_warmup=1,
+        lang_id=0,
+        learning_rate=3e-05,
+        local_rank=-1,
+        logging_steps=10,
+        mask_init="constant",
+        mask_scale=0.0,
+        mask_scores_learning_rate=0.01,
+        mask_block_rows=1,
+        mask_block_cols=1,
+        max_answer_length=30,
+        max_grad_norm=1.0,
+        max_query_length=64,
+        max_seq_length=384,
+        max_steps=-1,
+        model_name_or_path="bert-base-uncased",
+        model_type="masked_bert",
+        n_best_size=20,
+        no_cuda=False,
+        null_score_diff_threshold=0.0,
+        num_train_epochs=10.0,
+        output_dir="block_movement_pruning/output",
+        overwrite_cache=False,
+        overwrite_output_dir=True,
+        per_gpu_eval_batch_size=16,
+        per_gpu_train_batch_size=16,
+        predict_file="dev-v1.1.json",
+        pruning_method="topK",
+        regularization=None,
+        save_steps=500,
+        seed=42,
+        server_ip="",
+        server_port="",
+        teacher_name_or_path=None,
+        teacher_type=None,
+        temperature=2.0,
+        threads=8,
+        tokenizer_name="",
+        train_file="train-v1.1.json",
+        truncate_train_examples=100,
+        verbose_logging=False,
+        version_2_with_negative=False,
+        warmup_steps=5400,
+        weight_decay=0.0,
+    )
 
 
 def main():
     parser = create_parser()
-
-    args_string = ['--output_dir', 'block_movement_pruning/output', '--overwrite_output_dir', '--data_dir', 'squad_data', '--train_file', 'train-v1.1.json', '--predict_file',
-                   'dev-v1.1.json', '--do_train', '--do_eval', '--do_lower_case', '--model_type', 'masked_bert',
-                   '--model_name_or_path', 'bert-base-uncased', '--per_gpu_train_batch_size', '1', '--gradient_accumulation_steps', '16', '--warmup_steps', '5400',
-                   '--num_train_epochs', '10', '--learning_rate', '3e-5', '--mask_scores_learning_rate', '1e-2',
-                   '--initial_threshold', '1', '--final_threshold', '0.15', '--initial_warmup', '1', '--final_warmup', '2',
-                   '--pruning_method', 'topK', '--mask_init', 'constant', '--mask_scale', '0.', "--threads", "8",
-                  '--truncate_train_examples', '100',
-#                  '--logging_steps', '10',
-                   '--mask_block_rows', '32',
-                   '--mask_block_cols', '32'
-    ]
-
-    args = parser.parse_args(args_string)
+    args = parser.parse_args()
 
     # Regularization
     if args.regularization == "null":
@@ -1059,7 +1059,8 @@ def main():
             "stride or increase the maximum length to ensure the features are correctly built."
         )
 
-    if (os.path.exists(args.output_dir)
+    if (
+        os.path.exists(args.output_dir)
         and os.listdir(args.output_dir)
         and args.do_train
         and not args.overwrite_output_dir
@@ -1069,6 +1070,10 @@ def main():
                 args.output_dir
             )
         )
+
+    if args.overwrite_output_dir:
+        shutil.rmtree(args.output_dir, ignore_errors=True)
+        os.makedirs(args.output_dir)
 
     # Setup distant debugging if needed
     if args.server_ip and args.server_port:
@@ -1121,8 +1126,8 @@ def main():
         pruning_method=args.pruning_method,
         mask_init=args.mask_init,
         mask_scale=args.mask_scale,
-        mask_block_rows = args.mask_block_rows,
-        mask_block_cols = args.mask_block_cols,
+        mask_block_rows=args.mask_block_rows,
+        mask_block_cols=args.mask_block_cols,
     )
     tokenizer = tokenizer_class.from_pretrained(
         args.tokenizer_name if args.tokenizer_name else args.model_name_or_path,
