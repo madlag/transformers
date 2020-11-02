@@ -17,6 +17,7 @@
 
 
 import argparse
+import copy
 import glob
 import logging
 import os
@@ -1040,14 +1041,7 @@ class ShortNamer(TrialShortNamer):
     )
 
 
-def main():
-    parser = create_parser()
-    args = parser.parse_args()
-
-    # Regularization
-    if args.regularization == "null":
-        args.regularization = None
-
+def main_single(args):
     short_name = ShortNamer.shortname(args.__dict__)
 
     args.output_dir = os.path.join(args.output_dir, short_name)
@@ -1240,6 +1234,27 @@ def main():
             writer.write("%s = %s\n" % (key, str(results[key])))
 
     return results
+
+
+def main():
+    parser = create_parser()
+    args = parser.parse_args()
+
+    # Regularization
+    if args.regularization == "null":
+        args.regularization = None
+
+    sizes = [(2, 1), (8, 1), (32, 1), (128, 1), (4, 4), (8, 8), (32, 32), (1, 2), (1, 8), (1, 32), (1, 128)]
+
+    for size in sizes:
+        single_args = copy.deepcopy(args)
+        single_args.mask_block_rows = size[0]
+        single_args.mask_block_cols = size[1]
+
+        try:
+            main_single(single_args)
+        except Exception as e:
+            print(e)
 
 
 if __name__ == "__main__":
