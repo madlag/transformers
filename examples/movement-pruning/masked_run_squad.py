@@ -47,6 +47,7 @@ from transformers.data.metrics.squad_metrics import (
     squad_evaluate,
 )
 from transformers.data.processors.squad import SquadResult, SquadV1Processor, SquadV2Processor
+from transformers.utils.hp_naming import TrialShortNamer
 
 
 try:
@@ -609,6 +610,8 @@ def load_and_cache_examples(args, tokenizer, evaluate=False, output_examples=Fal
             else list(filter(None, args.train_file.split("/"))).pop(),
         ),
     )
+    if args.truncate_train_examples != -1:
+        cached_features_file = cached_features_file[:-len(".json")] + f"_truncate_{args.truncate_train_examples}.json"
 
     # Init features and dataset from cache if it exists
     if os.path.exists(cached_features_file) and not args.overwrite_cache:
@@ -640,6 +643,9 @@ def load_and_cache_examples(args, tokenizer, evaluate=False, output_examples=Fal
             else:
                 examples = processor.get_train_examples(args.data_dir, filename=args.train_file)
 
+        if args.truncate_train_examples != -1:
+            examples = examples[:args.truncate_train_examples]
+
         features, dataset = squad_convert_examples_to_features(
             examples=examples,
             tokenizer=tokenizer,
@@ -664,7 +670,7 @@ def load_and_cache_examples(args, tokenizer, evaluate=False, output_examples=Fal
     return dataset
 
 
-def main():
+def create_parser():
     parser = argparse.ArgumentParser()
 
     # Required parameters
@@ -939,11 +945,97 @@ def main():
     parser.add_argument("--server_port", type=str, default="", help="Can be used for distant debugging.")
 
     parser.add_argument("--threads", type=int, default=1, help="multiple threads for converting example to features")
-    args = parser.parse_args()
+
+    parser.add_argument("--truncate_train_examples", type=int, default=-1, help="Only keep first train examples, for development purpose for example.")
+
+    return parser
+
+class ShortNamer(TrialShortNamer):
+    DEFAULTS = dict(model_type='masked_bert',
+                    model_name_or_path='bert-base-uncased',
+                    output_dir='output_dir',
+                    data_dir='squad_data',
+                    train_file='train-v1.1.json',
+                    predict_file='dev-v1.1.json',
+                    config_name='',
+                    tokenizer_name='',
+                    cache_dir='',
+                    version_2_with_negative=False,
+                    null_score_diff_threshold=0.0,
+                    max_seq_length=384,
+                    doc_stride=128,
+                    max_query_length=64,
+                    do_train=True,
+                    do_eval=True,
+                    evaluate_during_training=False,
+                    do_lower_case=True,
+                    per_gpu_train_batch_size=1,
+                    per_gpu_eval_batch_size=8,
+                    learning_rate=3e-05,
+                    mask_scores_learning_rate=0.01,
+                    initial_threshold=1.0,
+                    final_threshold=0.15,
+                    initial_warmup=1,
+                    final_warmup=2,
+                    pruning_method='topK',
+                    mask_init='constant',
+                    mask_scale=0.0,
+                    regularization=None,
+                    final_lambda=0.0,
+                    global_topk=False,
+                    global_topk_frequency_compute=25,
+                    teacher_type=None,
+                    teacher_name_or_path=None,
+                    alpha_ce=0.5,
+                    alpha_distil=0.5,
+                    temperature=2.0,
+                    gradient_accumulation_steps=16,
+                    weight_decay=0.0,
+                    adam_epsilon=1e-08,
+                    max_grad_norm=1.0,
+                    num_train_epochs=10.0,
+                    max_steps=-1,
+                    warmup_steps=5400,
+                    n_best_size=20,
+                    max_answer_length=30,
+                    verbose_logging=False,
+                    lang_id=0,
+                    logging_steps=500,
+                    save_steps=500,
+                    eval_all_checkpoints=False,
+                    no_cuda=False,
+                    overwrite_output_dir=True,
+                    overwrite_cache=False,
+                    seed=42,
+                    local_rank=-1,
+                    fp16=False,
+                    fp16_opt_level='O1',
+                    server_ip='',
+                    server_port='',
+                    threads=8,
+                    truncate_train_examples=100,
+                    )
+
+
+def main():
+    parser = create_parser()
+
+    args_string = ['--output_dir', 'output_dir', '--overwrite_output_dir', '--data_dir', 'squad_data', '--train_file', 'train-v1.1.json', '--predict_file',
+     'dev-v1.1.json', '--do_train', '--do_eval', '--do_lower_case', '--model_type', 'masked_bert',
+     '--model_name_or_path', 'bert-base-uncased', '--per_gpu_train_batch_size', '1', '--gradient_accumulation_steps', '16', '--warmup_steps', '5400',
+     '--num_train_epochs', '10', '--learning_rate', '3e-5', '--mask_scores_learning_rate', '1e-2',
+     '--initial_threshold', '1', '--final_threshold', '0.15', '--initial_warmup', '1', '--final_warmup', '2',
+     '--pruning_method', 'topK', '--mask_init', 'constant', '--mask_scale', '0.', "--threads", "8", "--truncate_train_examples", "100"]
+
+    args = parser.parse_args(args_string)
 
     # Regularization
     if args.regularization == "null":
         args.regularization = None
+
+    short_name = ShortNamer.shortname(args.__dict__)
+
+    args.output_dir = os.path.join(args.output_dir, short_name)
 
     if args.doc_stride >= args.max_seq_length - args.max_query_length:
         logger.warning(
@@ -952,8 +1044,7 @@ def main():
             "stride or increase the maximum length to ensure the features are correctly built."
         )
 
-    if (
-        os.path.exists(args.output_dir)
+    if (os.path.exists(args.output_dir)
         and os.listdir(args.output_dir)
         and args.do_train
         and not args.overwrite_output_dir
