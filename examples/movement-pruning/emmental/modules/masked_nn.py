@@ -43,6 +43,8 @@ class MaskedLinear(nn.Linear):
         mask_init: str = "constant",
         mask_scale: float = 0.0,
         pruning_method: str = "topK",
+        mask_block_rows:int = 1,
+        mask_block_cols:int = 1,
     ):
         """
         Args:
@@ -68,11 +70,17 @@ class MaskedLinear(nn.Linear):
         super(MaskedLinear, self).__init__(in_features=in_features, out_features=out_features, bias=bias)
         assert pruning_method in ["topK", "threshold", "sigmoied_threshold", "magnitude", "l0"]
         self.pruning_method = pruning_method
+        self.mask_block_rows = mask_block_rows
+        self.mask_block_cols = mask_block_cols
 
         if self.pruning_method in ["topK", "threshold", "sigmoied_threshold", "l0"]:
             self.mask_scale = mask_scale
             self.mask_init = mask_init
-            self.mask_scores = nn.Parameter(torch.Tensor(self.weight.size()))
+            size = self.weight.size()
+            assert(size[0] % self.mask_block_rows == 0)
+            assert(size[1] % self.mask_block_cols == 0)
+            mask_size = (size[0] // self.mask_block_rows, size[1] // self.mask_block_cols)
+            self.mask_scores = nn.Parameter(torch.Tensor(size=mask_size))
             self.init_mask()
 
     def init_mask(self):
@@ -82,6 +90,11 @@ class MaskedLinear(nn.Linear):
             init.uniform_(self.mask_scores, a=-self.mask_scale, b=self.mask_scale)
         elif self.mask_init == "kaiming":
             init.kaiming_uniform_(self.mask_scores, a=math.sqrt(5))
+
+    def expand_mask(self, mask):
+        mask = torch.repeat_interleave(mask, self.mask_block_rows, dim=0)
+        mask = torch.repeat_interleave(mask, self.mask_block_cols, dim=1)
+        return mask
 
     def forward(self, input: torch.tensor, threshold: float):
         # Get the mask
@@ -101,6 +114,8 @@ class MaskedLinear(nn.Linear):
                 s = torch.sigmoid(self.mask_scores)
             s_bar = s * (r - l) + l
             mask = s_bar.clamp(min=0.0, max=1.0)
+        # Expand block mask to individual element mask
+        mask = self.expand_mask(mask)
         # Mask weights with computed mask
         weight_thresholded = mask * self.weight
         # Compute output (linear layer) with masked weights

@@ -97,6 +97,8 @@ class BertSelfAttention(nn.Module):
             pruning_method=config.pruning_method,
             mask_init=config.mask_init,
             mask_scale=config.mask_scale,
+            mask_block_rows=config.mask_block_rows,
+            mask_block_cols=config.mask_block_cols,
         )
         self.key = MaskedLinear(
             config.hidden_size,
@@ -104,6 +106,8 @@ class BertSelfAttention(nn.Module):
             pruning_method=config.pruning_method,
             mask_init=config.mask_init,
             mask_scale=config.mask_scale,
+            mask_block_rows=config.mask_block_rows,
+            mask_block_cols=config.mask_block_cols,
         )
         self.value = MaskedLinear(
             config.hidden_size,
@@ -111,6 +115,8 @@ class BertSelfAttention(nn.Module):
             pruning_method=config.pruning_method,
             mask_init=config.mask_init,
             mask_scale=config.mask_scale,
+            mask_block_rows=config.mask_block_rows,
+            mask_block_cols=config.mask_block_cols,
         )
 
         self.dropout = nn.Dropout(config.attention_probs_dropout_prob)
@@ -183,6 +189,8 @@ class BertSelfOutput(nn.Module):
             pruning_method=config.pruning_method,
             mask_init=config.mask_init,
             mask_scale=config.mask_scale,
+            mask_block_rows=config.mask_block_rows,
+            mask_block_cols=config.mask_block_cols,
         )
         self.LayerNorm = BertLayerNorm(config.hidden_size, eps=config.layer_norm_eps)
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
@@ -255,6 +263,8 @@ class BertIntermediate(nn.Module):
             pruning_method=config.pruning_method,
             mask_init=config.mask_init,
             mask_scale=config.mask_scale,
+            mask_block_rows=config.mask_block_rows,
+            mask_block_cols=config.mask_block_cols,
         )
         if isinstance(config.hidden_act, str):
             self.intermediate_act_fn = ACT2FN[config.hidden_act]
@@ -276,6 +286,8 @@ class BertOutput(nn.Module):
             pruning_method=config.pruning_method,
             mask_init=config.mask_init,
             mask_scale=config.mask_scale,
+            mask_block_rows=config.mask_block_rows,
+            mask_block_cols=config.mask_block_cols,
         )
         self.LayerNorm = BertLayerNorm(config.hidden_size, eps=config.layer_norm_eps)
         self.dropout = nn.Dropout(config.hidden_dropout_prob)

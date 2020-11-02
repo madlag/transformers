@@ -23,7 +23,7 @@ from torch import autograd
 
 class ThresholdBinarizer(autograd.Function):
     """
-    Thresholdd binarizer.
+    Threshold binarizer.
     Computes a binary mask M from a real value matrix S such that `M_{i,j} = 1` if and only if `S_{i,j} > \tau`
     where `\tau` is a real value threshold.
 
