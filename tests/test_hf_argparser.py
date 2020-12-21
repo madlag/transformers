@@ -180,6 +180,15 @@ class HfArgumentParserTest(unittest.TestCase):
         args = BasicExample(**args_dict)
         self.assertEqual(parsed_args, args)
 
+    def test_parse_dict_strict(self):
+        parser = HfArgumentParser(BasicExample)
+
+        args_dict = {"foo": 12, "bar": 3.14, "baz": "42", "flag": True, "badXYZ": "fail"}
+
+        with self.assertRaises(RuntimeError) as cm:
+            _ = parser.parse_dict(args_dict, strict=True)[0]
+        self.assertEquals("Remaining arguments in input dict: badXYZ", str(cm.exception))
+
     def test_integration_training_args(self):
         parser = HfArgumentParser(TrainingArguments)
         self.assertIsNotNone(parser)

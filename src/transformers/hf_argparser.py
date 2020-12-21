@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import dataclasses
 import json
 import sys
@@ -159,29 +160,35 @@ class HfArgumentParser(ArgumentParser):
 
             return (*outputs,)
 
-    def parse_json_file(self, json_file: str) -> Tuple[DataClass, ...]:
-        """
-        Alternative helper method that does not use `argparse` at all, instead loading a json file and populating the
-        dataclass types.
-        """
-        data = json.loads(Path(json_file).read_text())
-        outputs = []
-        for dtype in self.dataclass_types:
-            keys = {f.name for f in dataclasses.fields(dtype)}
-            inputs = {k: v for k, v in data.items() if k in keys}
-            obj = dtype(**inputs)
-            outputs.append(obj)
-        return (*outputs,)
-
-    def parse_dict(self, args: dict) -> Tuple[DataClass, ...]:
+    def parse_dict(self, args: dict, strict=False) -> Tuple[DataClass, ...]:
         """
         Alternative helper method that does not use `argparse` at all, instead uses a dict and populating the dataclass
         types.
         """
         outputs = []
+        args_keys = {k: True for k in args}
+        found_keys = {}
         for dtype in self.dataclass_types:
             keys = {f.name for f in dataclasses.fields(dtype)}
+            for k in keys:
+                if k in found_keys:
+                    raise RuntimeError(f"Parameter name {k} found in {dtype} already exists in {found_keys[k]}.")
+                found_keys[k] = dtype
             inputs = {k: v for k, v in args.items() if k in keys}
+            for k in keys:
+                if k in args_keys:
+                    del args_keys[k]
             obj = dtype(**inputs)
             outputs.append(obj)
+        if strict and len(args_keys) != 0:
+            raise RuntimeError("Remaining arguments in input dict: %s" % ", ".join(args_keys))
+
         return (*outputs,)
+
+    def parse_json_file(self, json_file: str, strict=False) -> Tuple[DataClass, ...]:
+        """
+        Alternative helper method that does not use `argparse` at all, instead loading a json file and populating the
+        dataclass types.
+        """
+        data = json.loads(Path(json_file).read_text())
+        return self.parse_dict(data)
